@@ -1,0 +1,48 @@
+---
+- hosts: testserver
+  become: true
+  tasks:
+  - name: Packages installation
+    action: apt pkg={{ item }} state=installed
+    with_items:
+      - iptables
+      - apt
+      - ntp
+      - htop
+      - iotop
+      - tcpdump
+      - git
+      - wget
+      - tcpdump
+      - sysstat
+
+  - name: User creation with sudo group 
+    user:
+      name: ansibleuser
+      comment: "Test user created by ansible"
+      group: sudo
+      shell: /bin/bash
+
+  - name: Copy ssh key to authorized keys for created user
+    authorized_key:
+      user: ansibleuser 
+      state: present
+      key: "{{ lookup('file', lookup('env','HOME') + '/.ssh/id_rsa.pub') }}"
+
+  - name: Copy ssh config if changed and run handler for service restart
+    copy: src=ssh_conf/ssh_config
+          dest=/etc/ssh/ssh_config
+          owner=root
+          group=root
+          mode=0644
+          backup=yes
+    notify:
+      - restart ssh 
+
+  - name: Copy MOTD file
+    copy: src=motd/motd
+          dest=/etc/motd
+
+  handlers:
+    - name: restart ssh
+      service: name=ssh state=restarted
